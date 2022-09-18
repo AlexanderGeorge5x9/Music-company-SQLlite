@@ -1,0 +1,81 @@
+VIEW V1 -----------------
+CREATE VIEW V AS
+SELECT
+	AL.Title Album,
+	A.Name Artist,
+	G.Name Genre,
+	I.InvoiceDate DATE,
+	I.BillingCountry Country,
+	I.CustomerId ,
+	T.Name Track
+FROM Invoice I
+JOIN InvoiceLine AS IL
+USING (InvoiceId)
+JOIN Track T
+USING (TrackId)
+JOIN Album AL
+USING (AlbumId)
+JOIN Artist A
+USING (ArtistId)
+JOIN Genre G
+USING (GenreId)
+QUERRY 1 -----------------------
+SELECT Artist,
+	COUNT(*) ORDERS,
+CASE 	WHEN COUNT(*) > 100 THEN 'Big Contributor'
+		WHEN COUNT(*) > 90 THEN 'Semi Big Contributor'
+		WHEN COUNT(*) > 40 THEN 'Moderate Contributor'
+		WHEN COUNT(*) > 20 THEN 'Small Contributor'
+		ELSE 'Tiny Contributor' END AS Contribution
+FROM V
+GROUP BY Artist
+ORDER BY ORDERS DESC
+QUERY 2 ----------------------------------
+SELECT Genre,
+	COUNT(DISTINCT Album ) NUMBER_OF_ALBUMS ,
+	COUNT(DISTINCT Artist) NUMBER_OF_ARTISTS ,
+	COUNT(*) ORDERS,
+CASE 	WHEN COUNT(*) > 0.2*SUM(COUNT(*))OVER() THEN 'Big Contributor'
+		WHEN COUNT(*) > 0.15*SUM(COUNT(*))OVER() THEN 'Semi Big Contributor'
+		WHEN COUNT(*) > 0.1*SUM(COUNT(*))OVER() THEN 'Moderate Contributor'
+		WHEN COUNT(*) > 0.05*SUM(COUNT(*))OVER() THEN 'Small Contributor'
+		ELSE 'Tiny Contributor' END AS Contribution
+FROM V
+GROUP BY Genre
+ORDER BY ORDERS DESC
+QUERRY 3 ----------------------
+SELECT STRFTIME('%m', DATE) MONTH ,
+	COUNT(*) ORDERS
+FROM V
+WHERE Country  NOT IN (SELECT Country FROM(
+	SELECT 
+	Country,
+	COUNT(*) 
+	FROM V
+	GROUP BY Country
+	ORDER BY COUNT(*) DESC 
+	LIMIT (10))) 
+	AND Artist IN (SELECT Artist FROM (SELECT Artist,
+	COUNT(*) ORDERS
+FROM V
+GROUP BY Artist
+ORDER BY ORDERS DESC
+LIMIT 3))
+GROUP BY MONTH
+ORDER BY ORDERS DESC
+QUERRY 4 -----------------------------
+SELECT CustomerId,
+FirstName,LastName,
+COUNT(*) ORDERS,
+Artist
+FROM V
+JOIN Customer C
+USING(CustomerId)
+WHERE Artist=(SELECT Artist FROM (SELECT Artist,
+	COUNT(*) ORDERS
+FROM V
+GROUP BY Artist
+ORDER BY ORDERS DESC
+LIMIT 1))
+GROUP BY CustomerId
+ORDER BY ORDERS DESC
